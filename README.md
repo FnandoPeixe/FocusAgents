@@ -101,6 +101,4 @@ npx expo start
 
 - Cálculo 100% dinâmico de métricas: Atualizar os gráficos de horário, picos de rolagem e médias semanais exclusivamente a partir do histórico real de sessões e interações do usuário.
 
-- Refinamento de UI/UX e acessibilidade: Adicionar ícones na navegação inferior e nos cartões, melhorar a visualização dos gráficos e refinar microinterações.
-
 - Testes com usuários e pesquisa nativa: Avaliar a clareza e a não invasividade das intervenções com colegas/usuários-teste e investigar viabilidade de módulos nativos no sistema alvo.
