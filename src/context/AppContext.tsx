@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   GeneralRules,
@@ -20,6 +20,7 @@ interface AppContextData {
   updateGeneralRules: (partial: Partial<GeneralRules>) => void;
   approveSuggestion: () => void;
   dismissSuggestion: () => void;
+  offerSuggestion: (suggestion: RuleSuggestion) => void;
   recordSession: (session: Omit<SessionRecord, 'id' | 'timestamp'>) => void;
 }
 
@@ -177,6 +178,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPendingSuggestion(null);
   };
 
+  const offerSuggestion = useCallback((suggestion: RuleSuggestion) => {
+    setPendingSuggestion((current) => {
+      if (!current || current.id === 'sug-initial-evening') return suggestion;
+      return current;
+    });
+  }, []);
+
   const recordSession = (session: Omit<SessionRecord, 'id' | 'timestamp'>) => {
     const newRecord: SessionRecord = {
       ...session,
@@ -206,6 +214,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateGeneralRules,
         approveSuggestion,
         dismissSuggestion,
+        offerSuggestion,
         recordSession,
       }}
     >

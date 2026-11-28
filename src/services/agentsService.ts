@@ -5,29 +5,49 @@ import {
   SessionRecord,
 } from '../types/focusAgents';
 
-const OPENAI_API_KEY = (
+const env = (
   globalThis as { process?: { env?: Record<string, string | undefined> } }
-).process?.env?.EXPO_PUBLIC_OPENAI_API_KEY;
+).process?.env;
+
+const CUSTOM_BASE_URL = env?.EXPO_PUBLIC_LLM_BASE_URL?.trim();
+const FREE_CHAT_URL = 'https://flm.stonech.at/v1/chat/completions';
+
+function chatCompletionsUrl(baseUrl: string): string {
+  const trimmed = baseUrl.replace(/\/$/, '');
+  return trimmed.endsWith('/chat/completions') ? trimmed : `${trimmed}/chat/completions`;
+}
+
+function parseModelJson(content: string): unknown {
+  const trimmed = content.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
+  return JSON.parse(fenced?.[1] ?? trimmed);
+}
 
 async function callLlmOrFallback<T>(
   systemPrompt: string,
   userPayload: unknown,
-  fallbackFn: () => T
+  fallbackFn: () => T,
+  isValid: (value: unknown) => value is T
 ): Promise<T> {
-  if (!OPENAI_API_KEY) {
-    return fallbackFn();
-  }
+  const endpoint = CUSTOM_BASE_URL ? chatCompletionsUrl(CUSTOM_BASE_URL) : FREE_CHAT_URL;
+  const apiKey = CUSTOM_BASE_URL
+    ? env?.EXPO_PUBLIC_LLM_API_KEY?.trim() || env?.EXPO_PUBLIC_OPENAI_API_KEY?.trim()
+    : undefined;
+  const model =
+    env?.EXPO_PUBLIC_LLM_MODEL?.trim() ||
+    (CUSTOM_BASE_URL?.includes('openai.com') ? 'gpt-4o-mini' : 'auto');
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model,
         temperature: 0.4,
+        max_tokens: 500,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: systemPrompt },
@@ -39,7 +59,9 @@ async function callLlmOrFallback<T>(
     if (!response.ok) return fallbackFn();
     const data = await response.json();
     const content = data?.choices?.[0]?.message?.content;
-    return content ? (JSON.parse(content) as T) : fallbackFn();
+    if (!content) return fallbackFn();
+    const parsed = parseModelJson(content);
+    return isValid(parsed) ? parsed : fallbackFn();
   } catch {
     return fallbackFn();
   }
@@ -58,7 +80,12 @@ export async function analyzePatternsWithAgent(
       headline: 'Picos de rolagem no fim da tarde e noite',
       insight:
         'Sessões curtas e repetidas aparecem com maior frequência entre 18h e 22h, associadas a picos de rolagem contínua.',
-    })
+    }),
+    (value): value is { headline: string; insight: string } => {
+      if (!value || typeof value !== 'object') return false;
+      const record = value as { headline?: unknown; insight?: unknown };
+      return typeof record.headline === 'string' && typeof record.insight === 'string';
+    }
   );
 }
 
@@ -145,6 +172,21 @@ export async function guideUserWithAgent(params: {
           },
         ],
       };
+    },
+    (value): value is GuideRecommendation => {
+      if (!value || typeof value !== 'object') return false;
+      const record = value as GuideRecommendation;
+      return (
+        typeof record.acknowledgment === 'string' &&
+        Array.isArray(record.alternatives) &&
+        record.alternatives.length > 0 &&
+        record.alternatives.every(
+          (item) =>
+            typeof item?.id === 'string' &&
+            typeof item?.title === 'string' &&
+            typeof item?.subtitle === 'string'
+        )
+      );
     }
   );
 }
@@ -177,6 +219,22 @@ export async function generateReflectiveSuggestion(
               }
             : null,
       };
+    },
+    (value): value is { summary: string; suggestion: RuleSuggestion | null } => {
+      if (!value || typeof value !== 'object') return false;
+      const record = value as { summary?: unknown; suggestion?: unknown };
+      if (typeof record.summary !== 'string') return false;
+      if (record.suggestion == null) return true;
+      const suggestion = record.suggestion as RuleSuggestion;
+      return (
+        typeof suggestion.id === 'string' &&
+        typeof suggestion.title === 'string' &&
+        typeof suggestion.description === 'string' &&
+        (suggestion.target === 'eveningLimitMinutes' || suggestion.target === 'appScrollLimit') &&
+        typeof suggestion.currentValue === 'number' &&
+        typeof suggestion.suggestedValue === 'number' &&
+        typeof suggestion.reason === 'string'
+      );
     }
   );
 }

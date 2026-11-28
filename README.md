@@ -53,7 +53,7 @@ FocusAgents1.0/
 
 - Aplicativo Expo Go no celular (Android ou iOS) ou navegador web
 
-- (Opcional) Chave de API de LLM caso queira testar chamadas reais em vez do fallback local
+- Internet, se quiser as respostas geradas pelo modelo gratuito. Sem internet, o app usa o fallback local.
 
 ## Como executar passo a passo
 
@@ -70,13 +70,9 @@ Instale as dependências:
 npm install
 ```
 
-(Opcional) Configure as variáveis de ambiente:
-Crie um arquivo .env na raiz a partir do .env.example:
+Os três agentes usam um modelo gratuito, sem chave e sem créditos. Sem internet, o aplicativo continua com as respostas locais de contingência (fallback).
 
-Snippet de código
-EXPO_PUBLIC_OPENAI_API_KEY=sua_chave_aqui
-
-Sem chave configurada (ou sem conexão com a internet), o aplicativo continua funcionando normalmente usando as respostas de contingência (fallback).
+Para trocar de provedor, crie um `.env` a partir do `.env.example` e defina `EXPO_PUBLIC_LLM_BASE_URL`, `EXPO_PUBLIC_LLM_API_KEY` e `EXPO_PUBLIC_LLM_MODEL`.
 
 Inicie o servidor do Expo:
 
@@ -94,7 +90,7 @@ npx expo start
 
 2. Métricas iniciais ilustrativas: Parte dos dados exibidos nos gráficos diários e semanais começa com valores pré-carregados para facilitar a demonstração imediata, somando-se às novas sessões registradas durante o uso.
 
-3. Dependência opcional de API externa de LLM: As chamadas aos modelos de linguagem dependem de chave configurada em variável de ambiente; sem ela (ou sem internet), o sistema recorre a respostas locais de contingência (fallback).
+3. Modelo gratuito na internet: as respostas dos agentes vêm de um serviço público sem chave. Sem internet, o sistema recorre às respostas locais de contingência (fallback). O texto das sessões sai do aparelho nesse pedido.
 
 ## Próximas evoluções
 - Integração completa com LLM: Conectar e refinar os prompts dos agentes (Analista de Padrões, Agente Orientador e Agente Reflexivo) com respostas reais e validação de formato.
