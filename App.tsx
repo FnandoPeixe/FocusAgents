@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { Ionicons } from '@expo/vector-icons';
 import { AppProvider } from './src/context/AppContext';
 import { FeedSimulatorScreen } from './src/screens/FeedSimulatorScreen';
 import {
