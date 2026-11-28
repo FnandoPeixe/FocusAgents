@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAppContext } from '../context/AppContext';
 import { evaluateSessionRules } from '../services/rulesEngine';
 import { guideUserWithAgent } from '../services/agentsService';
@@ -137,17 +138,25 @@ export const FeedSimulatorScreen: React.FC<{ onCloseSimulator: () => void }> = (
             {rapidScrolls}
           </Text>
         </View>
-        <TouchableOpacity style={styles.exitBtn} onPress={handleFinishSession}>
+        <Pressable
+          style={({ pressed }) => [styles.exitBtn, pressed && styles.pressed]}
+          onPress={handleFinishSession}
+          accessibilityRole="button"
+          accessibilityLabel="Encerrar sessão"
+        >
           <Text style={styles.exitBtnText}>Encerrar</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
-      <TouchableOpacity
-        style={styles.demoTriggerBtn}
+      <Pressable
+        style={({ pressed }) => [styles.demoTriggerBtn, pressed && styles.pressed]}
         onPress={() => triggerIntervention('Você está rolando o feed há 20 min.')}
+        accessibilityRole="button"
+        accessibilityLabel="Testar intervenção do Agente Orientador agora"
       >
+        <Ionicons name="compass-outline" size={16} color="#234832" />
         <Text style={styles.demoTriggerText}>Testar intervenção do Agente Orientador agora</Text>
-      </TouchableOpacity>
+      </Pressable>
 
       <ScrollView
         style={styles.feed}
@@ -156,7 +165,12 @@ export const FeedSimulatorScreen: React.FC<{ onCloseSimulator: () => void }> = (
       >
         {[...MOCK_POSTS, ...MOCK_POSTS, ...MOCK_POSTS].map((post, idx) => (
           <View key={`${post.id}-${idx}`} style={styles.postCard}>
-            <Text style={styles.postAuthor}>@{post.author}</Text>
+            <View style={styles.postHead}>
+              <View style={styles.postAvatar}>
+                <Ionicons name="person" size={14} color="#24566A" />
+              </View>
+              <Text style={styles.postAuthor}>@{post.author}</Text>
+            </View>
             <Text style={styles.postBody}>{post.text}</Text>
           </View>
         ))}
@@ -178,15 +192,22 @@ export const FeedSimulatorScreen: React.FC<{ onCloseSimulator: () => void }> = (
               {INTENTIONS.map((intent) => {
                 const active = selectedIntention === intent;
                 return (
-                  <TouchableOpacity
+                  <Pressable
                     key={intent}
-                    style={[styles.chip, active && styles.chipActive]}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      active && styles.chipActive,
+                      pressed && styles.pressed,
+                    ]}
                     onPress={() => handleSelectIntention(intent)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={`Intenção: ${intent}`}
                   >
                     <Text style={[styles.chipText, active && styles.chipTextActive]}>
                       {intent}
                     </Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 );
               })}
             </View>
@@ -205,32 +226,43 @@ export const FeedSimulatorScreen: React.FC<{ onCloseSimulator: () => void }> = (
                 <Text style={styles.recAck}>{recommendation.acknowledgment}</Text>
                 <View style={styles.altRow}>
                   {recommendation.alternatives.map((alt) => (
-                    <TouchableOpacity
+                    <Pressable
                       key={alt.id}
-                      style={[
+                      style={({ pressed }) => [
                         styles.altCard,
                         chosenActivity === alt.title && styles.altCardSelected,
+                        pressed && styles.pressed,
                       ]}
                       onPress={() => setChosenActivity(alt.title)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: chosenActivity === alt.title }}
                     >
                       <Text style={styles.altTitle}>{alt.title}</Text>
                       <Text style={styles.altSub}>{alt.subtitle}</Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   ))}
                 </View>
                 {chosenActivity && (
-                  <TouchableOpacity style={styles.doneBtn} onPress={handleFinishSession}>
+                  <Pressable
+                    style={({ pressed }) => [styles.doneBtn, pressed && styles.pressed]}
+                    onPress={handleFinishSession}
+                    accessibilityRole="button"
+                  >
                     <Text style={styles.doneBtnText}>
                       Iniciar "{chosenActivity}" e sair do feed
                     </Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 )}
               </View>
             )}
 
-            <TouchableOpacity style={styles.continueBtn} onPress={handleContinueAnyway}>
+            <Pressable
+              style={({ pressed }) => [styles.continueBtn, pressed && styles.pressed]}
+              onPress={handleContinueAnyway}
+              accessibilityRole="button"
+            >
               <Text style={styles.continueText}>Continuar rolando mesmo assim</Text>
-            </TouchableOpacity>
+            </Pressable>
             <Text style={styles.footerNote}>
               A escolha é sua. Sem julgamentos.
             </Text>
@@ -259,6 +291,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   exitBtnText: { color: '#24312B', fontWeight: '600', fontSize: 13 },
+  pressed: { opacity: 0.72 },
   demoTriggerBtn: {
     marginHorizontal: 16,
     marginBottom: 10,
@@ -268,6 +301,10 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 12,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: 44,
   },
   demoTriggerText: { color: '#2F5B3E', fontWeight: '600', fontSize: 13 },
   feed: { flex: 1, paddingHorizontal: 16 },
@@ -279,7 +316,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ECEFEA',
   },
-  postAuthor: { fontWeight: '700', color: '#24312B', marginBottom: 6 },
+  postHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  postAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E7F0F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  postAuthor: { fontWeight: '700', color: '#24312B' },
   postBody: { color: '#4A5550', lineHeight: 20 },
   backdrop: {
     flex: 1,
