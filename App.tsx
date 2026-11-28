@@ -1,6 +1,14 @@
-import React, { useState } from 'react';
-import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { AppProvider } from './src/context/AppContext';
 import { FeedSimulatorScreen } from './src/screens/FeedSimulatorScreen';
 import {
@@ -11,16 +19,43 @@ import {
 } from './src/screens/MainTabsScreens';
 
 type TabKey = 'inicio' | 'agentes' | 'insights' | 'regras';
+type IonName = React.ComponentProps<typeof Ionicons>['name'];
+
+const TABS: { key: TabKey; label: string; icon: IonName; iconActive: IonName }[] = [
+  { key: 'inicio', label: 'Início', icon: 'home-outline', iconActive: 'home' },
+  { key: 'agentes', label: 'Agentes', icon: 'people-outline', iconActive: 'people' },
+  { key: 'insights', label: 'Insights', icon: 'bar-chart-outline', iconActive: 'bar-chart' },
+  { key: 'regras', label: 'Regras', icon: 'options-outline', iconActive: 'options' },
+];
 
 function MainAppContent() {
   const [activeTab, setActiveTab] = useState<TabKey>('inicio');
   const [simulatorOpen, setSimulatorOpen] = useState(false);
+  const [barWidth, setBarWidth] = useState(0);
+  const indicator = useRef(new Animated.Value(0)).current;
+
+  const activeIndex = TABS.findIndex((tab) => tab.key === activeTab);
+
+  useEffect(() => {
+    Animated.spring(indicator, {
+      toValue: activeIndex,
+      useNativeDriver: true,
+      friction: 8,
+      tension: 90,
+    }).start();
+  }, [activeIndex, indicator]);
 
   if (simulatorOpen) {
     return (
       <FeedSimulatorScreen onCloseSimulator={() => setSimulatorOpen(false)} />
     );
   }
+
+  const tabWidth = barWidth / TABS.length;
+  const indicatorX = indicator.interpolate({
+    inputRange: [0, TABS.length - 1],
+    outputRange: [6, Math.max(6, tabWidth * (TABS.length - 1) + 6)],
+  });
 
   return (
     <SafeAreaView style={styles.root}>
@@ -37,28 +72,45 @@ function MainAppContent() {
         {activeTab === 'regras' && <RulesScreen />}
       </View>
 
-      {/* Barra de navegação inferior */}
-      <View style={styles.tabBar}>
-        {(
-          [
-            { key: 'inicio', label: 'Início' },
-            { key: 'agentes', label: 'Agentes' },
-            { key: 'insights', label: 'Insights' },
-            { key: 'regras', label: 'Regras' },
-          ] as { key: TabKey; label: string }[]
-        ).map((tab) => {
+      <View
+        style={styles.tabBar}
+        accessibilityRole="tablist"
+        onLayout={(event) => setBarWidth(event.nativeEvent.layout.width)}
+      >
+        {barWidth > 0 && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.indicator,
+              {
+                width: Math.max(0, tabWidth - 12),
+                transform: [{ translateX: indicatorX }],
+              },
+            ]}
+          />
+        )}
+        {TABS.map((tab) => {
           const active = activeTab === tab.key;
           return (
-            <TouchableOpacity
+            <Pressable
               key={tab.key}
-              style={styles.tabItem}
+              style={({ pressed }) => [styles.tabItem, pressed && styles.tabPressed]}
               onPress={() => setActiveTab(tab.key)}
+              accessibilityRole="tab"
+              accessibilityLabel={tab.label}
+              accessibilityState={{ selected: active }}
             >
+              <Ionicons
+                name={active ? tab.iconActive : tab.icon}
+                size={22}
+                color={active ? '#2F5B3E' : '#4E5853'}
+                importantForAccessibility="no"
+                accessibilityElementsHidden
+              />
               <Text style={[styles.tabText, active && styles.tabTextActive]}>
                 {tab.label}
               </Text>
-              {active && <View style={styles.activeDot} />}
-            </TouchableOpacity>
+            </Pressable>
           );
         })}
       </View>
@@ -82,17 +134,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E6EAE7',
-    paddingVertical: 10,
-    paddingBottom: 16,
+    paddingTop: 8,
+    paddingBottom: 14,
+    minHeight: 64,
   },
-  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  tabText: { fontSize: 13, fontWeight: '600', color: '#7A8580' },
+  indicator: {
+    position: 'absolute',
+    top: 6,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#EAF2EC',
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    minHeight: 48,
+    zIndex: 1,
+  },
+  tabPressed: { opacity: 0.7 },
+  tabText: { fontSize: 11, fontWeight: '600', color: '#4E5853' },
   tabTextActive: { color: '#2F5B3E', fontWeight: '700' },
-  activeDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: '#4A7C59',
-    marginTop: 4,
-  },
 });
