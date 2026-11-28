@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   LayoutAnimation,
   Platform,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAppContext } from '../context/AppContext';
+import { analyzePatternsWithAgent, generateReflectiveSuggestion } from '../services/agentsService';
 import { calculateWeeklyStats } from '../services/rulesEngine';
 import { AppMark, IconBadge, SoftPressable } from '../components/ui';
 
@@ -65,6 +66,17 @@ export const HomeScreen: React.FC<{
 }> = ({ onOpenSimulator, onGoToRules }) => {
   const { apps, sessions, toggleAppMonitored } = useAppContext();
   const { totalMinutes } = calculateWeeklyStats(sessions);
+  const [pattern, setPattern] = useState<{ headline: string; insight: string } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    analyzePatternsWithAgent(sessions).then((result) => {
+      if (!cancelled) setPattern(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessions]);
 
   const hours = Math.floor(totalMinutes / 60);
   const mins = totalMinutes % 60;
@@ -100,6 +112,11 @@ export const HomeScreen: React.FC<{
         </Text>
         <Text style={styles.mutedSmall}>
           em {sessions.length + 14} sessões conscientes
+        </Text>
+        <Text style={styles.bodyText}>
+          {pattern
+            ? `${pattern.headline}. ${pattern.insight}`
+            : 'O Analista de Padrões está lendo suas sessões.'}
         </Text>
 
         <View
@@ -270,8 +287,21 @@ export const AgentsScreen: React.FC = () => {
    3. TELA INSIGHTS (Agente Reflexivo + aprovação de regra)
    ========================================================= */
 export const InsightsScreen: React.FC = () => {
-  const { pendingSuggestion, approveSuggestion, dismissSuggestion } =
+  const { pendingSuggestion, approveSuggestion, dismissSuggestion, offerSuggestion, rules, sessions } =
     useAppContext();
+  const [weeklySummary, setWeeklySummary] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    generateReflectiveSuggestion(rules.eveningLimitMinutes, sessions).then((result) => {
+      if (cancelled) return;
+      setWeeklySummary(result.summary);
+      if (result.suggestion) offerSuggestion(result.suggestion);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [rules.eveningLimitMinutes, sessions, offerSuggestion]);
 
   const maxMins = Math.max(...WEEK_DAYS.map((item) => item.mins));
   const average = Math.round(
@@ -299,11 +329,10 @@ export const InsightsScreen: React.FC = () => {
           <Text style={styles.kickerInline}>PEQUENAS MUDANÇAS, PROGRESSO REAL</Text>
         </View>
         <Text style={styles.highlightTitle}>
-          Rolagem noturna caiu 35% esta semana
+          {weeklySummary ?? 'O Agente Reflexivo está lendo a sua semana.'}
         </Text>
         <Text style={styles.bodyText}>
-          Você abriu espaço para descansar em 5 noites. Pequenas mudanças fazem
-          diferença.
+          A sugestão abaixo só muda uma regra se você aprovar.
         </Text>
       </View>
 
